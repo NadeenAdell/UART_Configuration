@@ -1,0 +1,150 @@
+/*
+ * uart_prog.c
+ *
+ * Created: 10/15/2023 12:54:52 PM
+ *  Author: nadeen.adel
+ */ 
+
+/***********************************Includes***********************************/
+#include "../../LIB/BIT_Math.h"
+#include "../../LIB/STD_Types.h"
+
+#include "uart_config.h"
+#include "uart_interface.h"
+#include "uart_private.h"
+
+
+
+
+void MUART_init(void)
+{
+	u16 UBRR_val;       //to set the value in UBRRL register
+	//To Calculate the value in UBRRL & UBBRH registers
+	#if USART_SET_SYNCH_MODE == USART_ASYNC_MODE
+	#if USART_SET_SPEED == USART_NORMAL_SPEED
+	UBRR_val= ASYNC_NORMAL_EQU;
+	#elif  USART_SET_SPEED ==  USART_DOUBLE_SPEED    
+
+	UBRR_val = ASYNC_DOUBLE_EQU;
+	#endif
+	#elif USART_SET_SYNCH_MODE == USART_SYNC_MODE
+	UBRR_val = SYNC_EQU;
+	#endif 
+	
+	UBRRL=(u8)(UBRR_val>>8);
+	UBRRH=(u8)(UBRR_val);
+	
+	/*Set speed mode*/
+	#if USART_SET_SPEED==USART_NORMAL_SPEED
+	CLEAR_BIT(UCSRA,U2X);
+	
+	#elif USART_SET_SPEED==USART_DOUBLE_SPEED
+	SET_BIT(UCSRA,U2X);
+	#endif
+	
+	/*Set synchronization mode*/
+	#if  USART_SET_SYNCH_MODE==USART_SYNC_MODE
+	SET_BIT(UCSRC,UMSEL);
+	
+	#elif USART_SET_SYNCH_MODE==USART_ASYNC_MODE
+	CLEAR_BIT(UCSRC,UMSEL);
+	#endif
+	
+	 /*Set Parity mode*/
+	 #if USART_SET_PARITY_MODE==USART_NO_PARITY
+	 CLEAR_BIT(UCSRC,UPM0);
+	 CLEAR_BIT(UCSRC,UPM1);
+	 
+	 #elif USART_SET_PARITY_MODE==USART_EVEN_PARITY
+	 CLEAR_BIT(UCSRC,UPM0);
+	 SET_BIT(UCSRC,UPM1);
+	 
+	 #elif USART_SET_PARITY_MODE==USART_ODD_PARITY
+	 SET_BIT(UCSRC,UPM0);
+	 SET_BIT(UCSRC,UPM1);
+	 #endif
+	 
+	 /*Set number of stop bits*/
+	 #if USART_SET_STOP_BITS==USART_ONE_STOP_BIT
+	 CLEAR_BIT(UCSRC,USBS);
+	 
+	 #elif USART_SET_STOP_BITS==USART_TWO_STOP_BITS
+	 SET_BIT(UCSRC,USBS);
+	 #endif
+	 
+	 /*Set Data size*/
+	 #if USART_SET_DATA_SIZE==USART_DATA_SIZE_5
+	 CLEAR_BIT(UCSRC,UCSZ0);
+	 CLEAR_BIT(UCSRC,UCSZ1);
+	 CLEAR_BIT(UCSRB,UCSZ2);
+	 
+	 #elif USART_SET_DATA_SIZE==USART_DATA_SIZE_6
+	 SET_BIT(UCSRC,UCSZ0);
+	 CLEAR_BIT(UCSRC,UCSZ1);
+	 CLEAR_BIT(UCSRB,UCSZ2);
+	 
+	 #elif USART_SET_DATA_SIZE==USART_DATA_SIZE_7
+	 CLEAR_BIT(UCSRC,UCSZ0);
+	 SET_BIT(UCSRC,UCSZ1);
+	 CLEAR_BIT(UCSRB,UCSZ2);
+	 
+	 #elif USART_SET_DATA_SIZE==USART_DATA_SIZE_8
+	 SET_BIT(UCSRC,UCSZ0);
+	 SET_BIT(UCSRC,UCSZ1);
+	 CLEAR_BIT(UCSRB,UCSZ2);
+	 
+	 #elif USART_SET_DATA_SIZE==USART_DATA_SIZE_9
+	 SET_BIT(UCSRC,UCSZ0);
+	 SET_BIT(UCSRC,UCSZ1);
+	 SET_BIT(UCSRB,UCSZ2);
+	 #endif
+	
+	
+	/*Enable UART  receiver*/
+	SET_BIT(UCSRB,RXEN);
+	
+	/*Enable UART  transmitter*/
+	SET_BIT(UCSRB,TXEN);
+	
+	/*Set URSEL to write on UCSRC*/
+	SET_BIT(UCSRC,URSEL);    //
+
+}
+
+void MUART_sendByte(u8 u8_a_data)
+{
+	//wait for empty transmit buffer
+	while (!GET_BIT(UCSRA,UDRE));
+	UDR = u8_a_data;    
+}
+
+u8 MUART_receiveByte(void)
+{
+	//wait until receive flag is1 ,receive complete
+		while (!GET_BIT(UCSRA,RXC));
+		return  UDR;
+
+}
+
+void MUART_sendString(u8* pdata)
+{
+	while(*pdata != '\0')
+	{
+		MUART_sendByte(*pdata);
+		pdata++;
+	}
+}
+/*
+void MUART_sendByteAsynch(u8 u8_a_data)
+{
+	/* Set byte to be transmitted */
+	/*
+	UDR= u8_a_data;
+}
+
+u8 MUART_readByteAsynch (void)
+{
+	return UDR;
+}
+*/
+
